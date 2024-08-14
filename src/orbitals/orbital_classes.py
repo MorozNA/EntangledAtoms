@@ -1,11 +1,11 @@
 import numpy as np
 import copy
 from IPython.display import display, Math
-from itertools import permutations
 
 
 class PrimitiveGaussian:
-    def __init__(self, alpha: float, coeff: float, coordinates: np.array):
+    def __init__(self, alpha: np.array, coeff: float, coordinates: np.array):
+        assert len(alpha) == len(coordinates)
         self.alpha = alpha
         self.coeff = coeff
         self.coordinates = coordinates
@@ -17,21 +17,24 @@ class PrimitiveGaussian:
     def __mul__(self, other):
         alpha = self.alpha + other.alpha
         coordinates = (self.alpha * self.coordinates + other.alpha * other.coordinates) / alpha
-        s = self.alpha * np.dot(self.coordinates, self.coordinates) + other.alpha * np.dot(other.coordinates,
-                                                                                           other.coordinates)
-        coeff = self.coeff * other.coeff * np.exp(np.dot(coordinates, coordinates) * alpha - s)
+        s = self.alpha * self.coordinates ** 2 + other.alpha * other.coordinates ** 2
+        coeff = self.coeff * other.coeff * np.prod(np.exp(coordinates ** 2 * alpha - s))
         return PrimitiveGaussian(alpha, coeff, coordinates)
 
+    def __rmul__(self, other):
+        if isinstance(other, float) or isinstance(other, int):
+            return PrimitiveGaussian(self.alpha, other * self.coeff, self.coordinates)
+
     def integrate(self):
-        return self.coeff * np.sqrt(np.pi / self.alpha) ** 3
+        return self.coeff * np.prod(np.sqrt(np.pi / self.alpha))
 
     def get_value(self, coordinates):
-        distance2 = np.dot(coordinates - self.coordinates, coordinates - self.coordinates)
-        value = self.coeff * np.exp(-self.alpha * distance2)
+        distance2 = (coordinates - self.coordinates) ** 2
+        value = self.coeff * np.exp(-np.dot(self.alpha, distance2))
         return value
 
 
-class AtomicOrbital:
+class GaussianProduct:
     def __init__(self, pg_list: list[PrimitiveGaussian], electronic_ind: list):
         # TODO: copy deepcopy so i can change coeffs individually between AtomicOrbitals
         self.pg_list = copy.deepcopy(pg_list)
@@ -76,22 +79,28 @@ class AtomicOrbital:
             ao2.electronic_ind.pop(j)
         pg_list = pg_list + ao1.pg_list + ao2.pg_list
         el_ind = el_ind + ao1.electronic_ind + ao2.electronic_ind
-        return AtomicOrbital(pg_list, el_ind)
+        return GaussianProduct(pg_list, el_ind)
+
+    def __rmul__(self, other):
+        if isinstance(other, float) or isinstance(other, int):
+            new_ao = copy.deepcopy(self)
+            new_ao.pg_list[0] = other * new_ao.pg_list[0]
+            return new_ao
 
     def integrate(self, electronic_ind):
         new_ao = copy.deepcopy(self)
         # TODO: don't allow same el_ind
         index = new_ao.electronic_ind.index(electronic_ind)
         value = new_ao.pg_list[index].integrate()
-        new_ao.pg_list[0].coeff *= value
-        # new_ao.coeff *= value
-
         new_ao.electronic_ind.pop(index)
         new_ao.pg_list.pop(index)
+
+        new_ao.pg_list[0].coeff *= value
+        # new_ao.coeff *= value
         return new_ao
 
     def integrate_orbital(self):
-        result = self.get_coeff()
+        result = 1
         for pg in self.pg_list:
             result *= pg.integrate()
         return result
@@ -104,8 +113,8 @@ class AtomicOrbital:
         return value
 
 
-class MolecularOrbital:
-    def __init__(self, ao_list: list[AtomicOrbital]):
+class Orbital:
+    def __init__(self, ao_list: list[GaussianProduct]):
         self.ao_list = ao_list
 
     def __str__(self):
@@ -127,11 +136,27 @@ class MolecularOrbital:
         for ao1 in self.ao_list:
             for ao2 in other.ao_list:
                 ao3_list.append(ao1 * ao2)
-        return MolecularOrbital(ao3_list)
+        return Orbital(ao3_list)
+
+    def __rmul__(self, other: float):
+        if isinstance(other, float) or isinstance(other, int):
+            new_orbital = copy.deepcopy(self)
+            for i in range(len(new_orbital.ao_list)):
+                new_orbital.ao_list[i] = other * new_orbital.ao_list[i]
+            return new_orbital
+
+    def __pow__(self, other: int):
+        new_orbital = copy.deepcopy(self)
+        if other == 0:
+            return 1
+        else:
+            for _ in range(other - 1):
+                new_orbital = new_orbital * self
+            return new_orbital
 
     def __add__(self, other):
         ao_list = self.ao_list + other.ao_list
-        return MolecularOrbital(ao_list)
+        return Orbital(ao_list)
 
     def __sub__(self, other):
         # TODO: check wheter 'other' changes after applying this method
@@ -156,125 +181,18 @@ class MolecularOrbital:
         new_ao_list = []
         for ao in self.ao_list:
             new_ao_list.append(ao.integrate(electronic_index))
-        return MolecularOrbital(new_ao_list)
+        return Orbital(new_ao_list)
 
     def integrate_orbital(self):
         result = 0
         for ao in self.ao_list:
-            ao.integrate_orbital()
-            result += ao.get_coeff()
+            result += ao.integrate_orbital()
         return result
 
     def normalize(self):
         module = self * self.conj()
         K = module.integrate_orbital()
-        for ao in self.ao_list:
-            # TODO: divide coeffs between pg's or do something else
-            ao.pg_list[0].coeff = ao.pg_list[0].coeff / K
 
-    # TODO: find similar terms and define addition of similar primitive_gaussians
-
-
-def transpose_list(or_list):
-    # Works for triangular lists
-    new_list = []
-    for col in range(len(or_list)):
-        column = [or_list[i][col] for i in range(len(or_list[col]))]
-        new_list.append(column)
-    return new_list
-
-
-class YoungDiagram:
-    def __init__(self, diagram: list, signs=None):
-        # TODO: assert whether len(signs) = len(diagram)
-        self.diagram = diagram
-        if signs is None:
-            signs = ['+'] * len(diagram)
-        self.signs = signs
-
-    def __str__(self):
-        # str signs = : each 0 to '+', 1 to '-'
-        for i in range(len(self.diagram[:-1])):
-            print(self.diagram[i][0], self.signs[i + 1], '', end='')
-        print(self.diagram[-1][0])
-
-        for diagram in self.diagram:
-            for row in diagram[1::]:
-                num_spaces = len(self.diagram[0][0]) - len(row)
-                print(row, num_spaces * '.  ', ' ', end='')
-        return ''
-
-    def symm_row(self, row):
-        new_diagrams = []
-        new_signs = []
-        # for diagram in self.diagram:
-        for i in range(len(self.diagram)):
-            for perm in list(permutations(self.diagram[i][row]))[1::]:
-                # neglecting first permutation which is the initial diagram
-                symm_diagram = self.diagram[i].copy()
-                symm_diagram[row] = list(perm)
-                new_diagrams.append(symm_diagram)
-                new_signs.append(self.signs[i])
-        self.diagram = self.diagram + new_diagrams
-        self.signs = self.signs + new_signs
-
-    def antisymm_row(self, row):
-        new_diagrams = []
-        new_signs = []
-        for i in range(len(self.diagram)):
-            for perm in list(permutations(self.diagram[i][row]))[1::]:
-                # neglecting first permutation which is the initial diagram
-                symm_diagram = self.diagram[i].copy()
-                symm_diagram[row] = list(perm)
-                new_diagrams.append(symm_diagram)
-                if self.signs[i] == '+':
-                    new_signs.append('-')
-                elif self.signs[i] == '-':
-                    new_signs.append('+')
-        self.diagram = self.diagram + new_diagrams
-        self.signs = self.signs + new_signs
-
-    def symm_col(self, col):
-        new_diagrams = []
-        new_signs = []
-        for i in range(len(self.diagram)):
-            transposed_diagram = transpose_list(self.diagram[i])
-            for perm in list(permutations(transposed_diagram[col]))[1::]:
-                # neglecting first permutation which is the initial diagram
-                symm_diagram = transposed_diagram.copy()
-                symm_diagram[col] = list(perm)
-                new_diagrams.append(transpose_list((symm_diagram)))
-                new_signs.append(self.signs[i])
-        self.diagram = self.diagram + new_diagrams
-        self.signs = self.signs + new_signs
-
-    def antisymm_col(self, col):
-        new_diagrams = []
-        new_signs = []
-        for i in range(len(self.diagram)):
-            transposed_diagram = transpose_list(self.diagram[i])
-            for perm in list(permutations(transposed_diagram[col]))[1::]:
-                # neglecting first permutation which is the initial diagram
-                symm_diagram = transposed_diagram.copy()
-                symm_diagram[col] = list(perm)
-                new_diagrams.append(transpose_list((symm_diagram)))
-                if self.signs[i] == '+':
-                    new_signs.append('-')
-                elif self.signs[i] == '-':
-                    new_signs.append('+')
-        self.diagram = self.diagram + new_diagrams
-        self.signs = self.signs + new_signs
-
-    def get_orbital(self, pg_list):
-        for num in range(len(self.diagram)):
-            flatten_diagram = [x for xs in self.diagram[num] for x in xs]
-            ao = AtomicOrbital(pg_list, flatten_diagram)
-            # sign = int((self.signs[num] + '1').replace('"', ''))
-            if num == 0:
-                mo = MolecularOrbital([ao])
-            else:
-                if self.signs[num]=='+':
-                    mo = mo + MolecularOrbital([ao])
-                elif self.signs[num]=='-':
-                    mo = mo - MolecularOrbital([ao])
-        return mo
+        if K != 0:
+            for ao in self.ao_list:
+                ao.pg_list[0].coeff = ao.pg_list[0].coeff / np.sqrt(K)

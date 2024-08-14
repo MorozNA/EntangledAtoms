@@ -1,4 +1,3 @@
 from .orbital_classes import PrimitiveGaussian
-from .orbital_classes import AtomicOrbital
-from .orbital_classes import MolecularOrbital
-from .orbital_classes import YoungDiagram
+from .orbital_classes import GaussianProduct
+from .orbital_classes import Orbital
