@@ -6,10 +6,10 @@ from src.orbitals import PrimitiveGaussian, GaussianProduct, Orbital
 sigmax = 1.0
 sigmay = 1.0
 alpha = np.array([1 / (2 * sigmax**2), 1 / (2 * sigmay**2)])
-coeff = 1
+coeff = 1.
 
-b = 2 * sigmax
-a = 1 * sigmay
+b = 2.0 * sigmax
+a = 2.0 * sigmay
 rA = np.array([-b / 2, a / 2])
 rB = np.array([b / 2, a / 2])
 rC = np.array([b / 2, -a / 2])
@@ -58,21 +58,73 @@ phi_g2.normalize()
 phi_e2.normalize()
 
 rho1 = 1 / 2 * (phi_g1 ** 2) + 1 / 2 * (phi_e1 ** 2)
-rho2 = 1 / 6 * (phi_g1 ** 2) * (phi_g2 ** 2) + 1 / 6 * (phi_e1 ** 2) * (phi_e2 ** 2) + 1 / 3 * (phi_g1 ** 2) * (
-        phi_e2 ** 2) + 1 / 3 * (phi_e1 ** 2) * (phi_g2 ** 2) - 1 / 3 * phi_g1 * phi_e1 * phi_g2 * phi_e2
-rho2_integrated = rho2.integrate(1)
+rho1_sq = rho1 ** 2
+rho2_same = 1/6 * (phi_g1 ** 4) + 1/6 * (phi_e1 ** 4) + 1/3 * ((phi_g1 ** 2) * (phi_e1 ** 2))
+rho2 = 1/6 * ((phi_g1 ** 2) * (phi_g2 ** 2)) + 1/6 * ((phi_e1 ** 2) * (phi_e2 ** 2)) \
+       + 1/3 * ((phi_g1 ** 2) * (phi_e2 ** 2)) + 1/3 * ((phi_e1 ** 2) * (phi_g2 ** 2)) \
+       -1/3 * (phi_g1 * phi_e1 * phi_g2 * phi_e2)
 
 print(rho1.integrate_orbital())
-print(rho2.integrate_orbital())
+print(rho1_sq.integrate_orbital())
+print(rho2_same.integrate_orbital())
 print('\n')
 
+
+
 print(len(rho1.ao_list))
-print(len(rho2.ao_list))
-print(len(rho2_integrated.ao_list))
+print(len(rho1_sq.ao_list))
+print(len(rho2_same.ao_list))
+
+from plot_tool import get_rho2_vec
+r_atomic = [rA, rB, rC, rD]
+side = np.linalg.norm(r_atomic[0] - r_atomic[1])
+x1_min = -1.75 * side
+x1_max = 1.75 * side
+x2_min = -1.75 * side
+x2_max = 1.75 * side
+step = 0.025
+
+point_x = rB[0]
+point_y = (rB[1] + rC[1]) / 2
+
+x1, x2 = np.meshgrid(np.arange(x1_min, x1_max, step), np.arange(x2_min, x2_max, step))
+y = get_rho2_vec(point_x, point_y, x1, x2, rho2)
+np.savetxt('4 atoms/data/rho2_right.txt', y, fmt='%f')
+
+
+# from plot_tool import get_rho1_vec
+#
+# r_atomic = [rA, rB, rC, rD]
+# side = np.linalg.norm(r_atomic[0] - r_atomic[1])
+# x1_min = -1.75 * side
+# x1_max = 1.75 * side
+# x2_min = -1.75 * side
+# x2_max = 1.75 * side
+# step = 0.025
+#
+# x1, x2 = np.meshgrid(np.arange(x1_min, x1_max, step), np.arange(x2_min, x2_max, step))
+# y1 = get_rho1_vec(x1, x2, rho1)
+# y2 = get_rho1_vec(x1, x2, rho1_sq)
+# y3 = get_rho1_vec(x1, x2, rho2_same)
+#
+# np.savetxt('4 atoms/data/x1_mesh.txt', x1, fmt='%f')
+# np.savetxt('4 atoms/data/x2_mesh.txt', x2, fmt='%f')
+# np.savetxt('4 atoms/data/rho1.txt', y1, fmt='%f')
+# np.savetxt('4 atoms/data/rho1_sq.txt', y2, fmt='%f')
+# np.savetxt('4 atoms/data/rho2_same.txt', y3, fmt='%f')
+# print(len(rho2_integrated.ao_list))
 
 #
 #
 #
-from plot_tool import plot_rho1, plot_rho2
-plot_rho1(rho1, rA, rB, rC, rD)
-plot_rho2(rho2, -b/2, 0.0, '-\\frac{b}{2}', '0', rA, rB, rC, rD)
+# from plot_tool import plot_rho1
+# r_atomic = [rA, rB, rC, rD]
+# plot_rho1(rho1, r_atomic, 'fig4')
+# title2 = r'Electron Density Function (Squared) $[\rho(\mathbf{r})]^2$'
+# plot_rho1(rho1_sq, r_atomic, 'fig4_sq', title2)
+# title3 = r'Coincidence Point Density Function  $\rho(\mathbf{r}, \mathbf{r})$'
+# plot_rho1(rho2_same, r_atomic, 'fig4_point', title3)
+#
+# rho_diff = rho1_sq - rho2_same
+# title_diff = r'Difference  $[\rho(\mathbf{r})]^2 - \rho(\mathbf{r}, \mathbf{r})$'
+# plot_rho1(rho_diff, r_atomic, 'fig4_diff', title_diff)
