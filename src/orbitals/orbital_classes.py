@@ -33,6 +33,13 @@ class PrimitiveGaussian:
         value = self.coeff * np.exp(-np.dot(self.alpha, distance2))
         return value
 
+    def get_values(self, r1, r2):
+        distance = np.array([r1 - self.coordinates[0], r2 - self.coordinates[1]])
+        distance = distance ** 2
+        # TODO: use np.dot
+        prod = self.alpha[0] * distance[0] + self.alpha[1] * distance[1]
+        return self.coeff * np.exp(-prod)
+
 
 class GaussianProduct:
     def __init__(self, pg_list: list[PrimitiveGaussian], electronic_ind: list):
@@ -111,6 +118,13 @@ class GaussianProduct:
         for i in range(len(self.electronic_ind)):
             value *= self.pg_list[i].get_value(electronic_coordinates[self.electronic_ind[i]])
         return value
+
+    def get_values(self, r1: list, r2: list):
+        assert len(r1) == len(r2)
+        assert len(self.electronic_ind) == len(r1)
+        values = np.ones_like(r1)
+        for i in range(len(self.electronic_ind)):
+            values *= self.pg_list[i].get_values(r1[self.electronic_ind[i]], r2[self.electronic_ind[i]])
 
 
 class Orbital:
