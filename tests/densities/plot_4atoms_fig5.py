@@ -38,24 +38,56 @@ data_fig5b_2 = [x1_1, x1_2, rho_minus]
 data_fig5c_1 = [x1_1, x1_2, rho_im1]
 data_fig5c_2 = [x1_1, x1_2, rho_im1]
 
-def save_to_excel(data, filename):
-    """Helper function to save a list of arrays to an Excel file"""
-    # Convert each array to a DataFrame
-    df_x1 = pd.DataFrame(data[0])
-    df_x2 = pd.DataFrame(data[1])
-    df_rho = pd.DataFrame(data[2])
+# def save_to_excel(data, filename):
+#     """Helper function to save a list of arrays to an Excel file"""
+#     # Convert each array to a DataFrame
+#     df_x1 = pd.DataFrame(data[0])
+#     df_x2 = pd.DataFrame(data[1])
+#     df_rho = pd.DataFrame(data[2])
+#
+#     # Create an Excel writer object
+#     with pd.ExcelWriter(filename) as writer:
+#         df_x1.to_excel(writer, sheet_name='x1', index=False)
+#         df_x2.to_excel(writer, sheet_name='x2', index=False)
+#         df_rho.to_excel(writer, sheet_name='rho', index=False)
+#
+#
+# # Save each dataset to separate files
+# save_to_excel(data_fig5a_1, '4 atoms/data/fig5/figure_5a_1_data.xlsx')
+# save_to_excel(data_fig5a_2, '4 atoms/data/fig5/figure_5a_2_data.xlsx')
+# save_to_excel(data_fig5b_1, '4 atoms/data/fig5/figure_5b_1_data.xlsx')
+# save_to_excel(data_fig5b_2, '4 atoms/data/fig5/figure_5b_2_data.xlsx')
+# save_to_excel(data_fig5c_1, '4 atoms/data/fig5/figure_5c_1_data.xlsx')
+# save_to_excel(data_fig5c_2, '4 atoms/data/fig5/figure_5c_2_data.xlsx')
 
-    # Create an Excel writer object
-    with pd.ExcelWriter(filename) as writer:
-        df_x1.to_excel(writer, sheet_name='x1', index=False)
-        df_x2.to_excel(writer, sheet_name='x2', index=False)
-        df_rho.to_excel(writer, sheet_name='rho', index=False)
 
 
-# Save each dataset to separate files
-save_to_excel(data_fig5a_1, '4 atoms/data/fig5/figure_5a_1_data.xlsx')
-save_to_excel(data_fig5a_2, '4 atoms/data/fig5/figure_5a_2_data.xlsx')
-save_to_excel(data_fig5b_1, '4 atoms/data/fig5/figure_5b_1_data.xlsx')
-save_to_excel(data_fig5b_2, '4 atoms/data/fig5/figure_5b_2_data.xlsx')
-save_to_excel(data_fig5c_1, '4 atoms/data/fig5/figure_5c_1_data.xlsx')
-save_to_excel(data_fig5c_2, '4 atoms/data/fig5/figure_5c_2_data.xlsx')
+def save_to_txt(data, filename):
+    """Save meshgrid data to text file in specified format"""
+    x1 = data[0]  # x coordinates
+    x2 = data[1]  # y coordinates
+    rho = data[2]  # rho values
+
+    with open(filename, 'w') as f:
+        f.write('{')  # Opening outer brace
+
+        # Iterate through all points in the meshgrid
+        for i in range(x1.shape[0]):
+            for j in range(x1.shape[1]):
+                # Write each point in the format {x, y, rho(x,y)}
+                f.write(f'{{{x1[i, j]}, {x2[i, j]}, {rho[i, j]}}}')
+
+                # Add comma unless it's the last element
+                if not (i == x1.shape[0] - 1 and j == x1.shape[1] - 1):
+                    f.write(', ')
+
+        f.write('}')  # Closing outer brace
+
+
+# Save each dataset to separate text files
+save_to_txt(data_fig5a_1, '4 atoms/data/fig5/figure_5a_1_data.txt')
+save_to_txt(data_fig5a_2, '4 atoms/data/fig5/figure_5a_2_data.txt')
+save_to_txt(data_fig5b_1, '4 atoms/data/fig5/figure_5b_1_data.txt')
+save_to_txt(data_fig5b_2, '4 atoms/data/fig5/figure_5b_2_data.txt')
+save_to_txt(data_fig5c_1, '4 atoms/data/fig5/figure_5c_1_data.txt')
+save_to_txt(data_fig5c_2, '4 atoms/data/fig5/figure_5c_2_data.txt')

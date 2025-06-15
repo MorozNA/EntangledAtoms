@@ -40,10 +40,10 @@ plot_four(rho_list, r_atomic, el_points=el_point_list, name='fig_double', colorm
 
 
 # import pandas as pd
-# data_fig3a = [x1_1, x1_2, rho1]
-# data_fig3b = [x1_1, x1_2, rho2_1]
-# data_fig3c = [x1_1, x1_2, rho2_3]
-# data_fig3d = [x1_1, x1_2, rho2_2]
+data_fig3a = [x1_1, x1_2, rho1]
+data_fig3b = [x1_1, x1_2, rho2_1]
+data_fig3c = [x1_1, x1_2, rho2_3]
+data_fig3d = [x1_1, x1_2, rho2_2]
 #
 # def save_to_excel(data, filename):
 #     """Helper function to save a list of arrays to an Excel file"""
@@ -64,4 +64,34 @@ plot_four(rho_list, r_atomic, el_points=el_point_list, name='fig_double', colorm
 # save_to_excel(data_fig3b, '3 atoms/data/fig3/figure_3b_data.xlsx')
 # save_to_excel(data_fig3c, '3 atoms/data/fig3/figure_3c_data.xlsx')
 # save_to_excel(data_fig3d, '3 atoms/data/fig3/figure_3d_data.xlsx')
+
+
+
+def save_to_txt(data, filename):
+    """Save meshgrid data to text file in specified format"""
+    x1 = data[0]  # x coordinates
+    x2 = data[1]  # y coordinates
+    rho = data[2]  # rho values
+
+    with open(filename, 'w') as f:
+        f.write('{')  # Opening outer brace
+
+        # Iterate through all points in the meshgrid
+        for i in range(x1.shape[0]):
+            for j in range(x1.shape[1]):
+                # Write each point in the format {x, y, rho(x,y)}
+                f.write(f'{{{x1[i, j]}, {x2[i, j]}, {rho[i, j]}}}')
+
+                # Add comma unless it's the last element
+                if not (i == x1.shape[0] - 1 and j == x1.shape[1] - 1):
+                    f.write(', ')
+
+        f.write('}')  # Closing outer brace
+
+
+# Save each dataset to separate text files
+save_to_txt(data_fig3a, '3 atoms/data/fig3/figure_3a_data.txt')
+save_to_txt(data_fig3b, '3 atoms/data/fig3/figure_3b_data.txt')
+save_to_txt(data_fig3c, '3 atoms/data/fig3/figure_3c_data.txt')
+save_to_txt(data_fig3d, '3 atoms/data/fig3/figure_3d_data.txt')
 
